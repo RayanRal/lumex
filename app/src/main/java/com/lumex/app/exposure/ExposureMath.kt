@@ -5,9 +5,6 @@ import kotlin.math.pow
 import kotlin.math.sqrt
 
 /**
- * Pure-Kotlin exposure math (no Android dependencies, JVM-testable).
- *
- * Conventions:
  * - EV values follow the APEX system: EV = log2(N^2 / t) at ISO 100.
  * - `residualEv` on solutions is the overexposure (+) / underexposure (-)
  *   in stops that results from using the snapped standard setting instead

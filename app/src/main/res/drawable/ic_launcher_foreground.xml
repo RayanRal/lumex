@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Sun motif: light meter -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="6"
+        android:pathData="M82,54 L90,54 M73.8,73.8 L79.5,79.5 M54,82 L54,90 M34.2,73.8 L28.5,79.5 M26,54 L18,54 M34.2,34.2 L28.5,28.5 M54,26 L54,18 M73.8,34.2 L79.5,28.5" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7"
+        android:pathData="M54,36 m-18,0 a18,18 0 1,1 36,0 a18,18 0 1,1 -36,0" />
+</vector>
