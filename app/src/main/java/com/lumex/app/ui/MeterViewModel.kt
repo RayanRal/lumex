@@ -18,6 +18,13 @@ import java.util.Locale
 
 enum class PriorityMode { APERTURE, SHUTTER }
 
+private data class MeterParams(
+    val iso: Int,
+    val mode: PriorityMode,
+    val aperture: Double,
+    val shutter: Double
+)
+
 data class MeterUiState(
     val hasSensor: Boolean = true,
     val lux: Float? = null,
@@ -42,9 +49,14 @@ class MeterViewModel(private val meter: LightMeter) : ViewModel() {
     private val _held = MutableStateFlow<LightReading?>(null)
 
     val uiState: StateFlow<MeterUiState> = combine(
-        _iso, _mode, _aperture, _shutter, _held, meter.readings
-    ) { iso, mode, aperture, shutter, held, live ->
-        buildUi(iso, mode, aperture, shutter, held, live, meter.hasSensor)
+        _iso, _mode, _aperture, _shutter
+    ) { iso: Int, mode: PriorityMode, aperture: Double, shutter: Double ->
+        MeterParams(iso, mode, aperture, shutter)
+    }.combine(_held) { params: MeterParams, held: LightReading? ->
+        params to held
+    }.combine(meter.readings) { paramsAndHeld: Pair<MeterParams, LightReading?>, live: LightReading? ->
+        val (params, held) = paramsAndHeld
+        buildUi(params.iso, params.mode, params.aperture, params.shutter, held, live, meter.hasSensor)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
