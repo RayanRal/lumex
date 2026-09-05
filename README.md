@@ -2,12 +2,11 @@
 
 Bare-bones native Android scaffold (Kotlin + Jetpack Compose Material3).
 
-Package: `com.lumex.app` · minSdk 26 · target/compile 34
+Package: `com.lumex.app` · minSdk 26 · target/compile 36 (Android 16) · AGP 8.10.1 · Kotlin 2.1.0 · Gradle 8.13
 
-## Prereqs (not yet installed on this machine)
-- JDK 17 (you have Temurin 25 — AGP 8.x needs 17)
-- Android SDK + platform-tools (`adb`, `sdkmanager`)
-- Android Studio (recommended, bundles the above), or cmdline-tools + Gradle
+## Prereqs
+- Android Studio + SDK (done) with **Android 16 (API 36)**: SDK Platform 36 + Build-Tools 36
+- JDK 17 for Gradle (Studio JBR works; terminal `JAVA_HOME` pointing at Java 25 will fail — set `org.gradle.java.home` or `JAVA_HOME` to JDK 17)
 
 ## Next steps once SDK is installed
 1. Point Gradle at SDK: `cp local.properties.example local.properties` and edit `sdk.dir`
