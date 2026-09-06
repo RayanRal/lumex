@@ -36,11 +36,15 @@ class MeterViewModel(private val meter: LightMeter) : ViewModel() {
     private val _shutter = MutableStateFlow(DEFAULT_SHUTTER_SECONDS)
     private val _held = MutableStateFlow<LightReading?>(null)
 
+    private val paramsFlow = combine(_iso, _mode, _aperture, _shutter) {
+            iso: Int, mode: PriorityMode, aperture: Double, shutter: Double ->
+        MeterParams(iso, mode, aperture, shutter)
+    }
+
     val uiState: StateFlow<MeterUiState> = combine(
-        _iso, _mode, _aperture, _shutter, _held, meter.readings
-    ) { iso: Int, mode: PriorityMode, aperture: Double, shutter: Double,
-        held: LightReading?, live: LightReading? ->
-        buildUi(MeterParams(iso, mode, aperture, shutter), held, live, meter.hasSensor)
+        paramsFlow, _held, meter.readings
+    ) { params: MeterParams, held: LightReading?, live: LightReading? ->
+        buildUi(params, held, live, meter.hasSensor)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
