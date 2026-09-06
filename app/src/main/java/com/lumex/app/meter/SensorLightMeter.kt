@@ -5,9 +5,11 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.SystemClock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * [LightMeter] backed by the ambient light sensor (TYPE_LIGHT).
@@ -26,27 +28,36 @@ class SensorLightMeter(context: Context) : LightMeter, SensorEventListener {
     private val _readings = MutableStateFlow<LightReading?>(null)
     override val readings: StateFlow<LightReading?> = _readings.asStateFlow()
 
-    private var started = false
+    private val started = AtomicBoolean(false)
 
-    @Synchronized
     override fun start() {
-        if (started || lightSensor == null) return
-        sensorManager?.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL)
-        started = true
+        if (!started.compareAndSet(false, true)) return
+        val sensor = lightSensor
+        if (sensor == null) {
+            started.set(false)
+            return
+        }
+        sensorManager?.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
-    @Synchronized
     override fun stop() {
-        if (!started) return
+        if (!started.compareAndSet(true, false)) return
         sensorManager?.unregisterListener(this)
-        started = false
     }
 
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type != Sensor.TYPE_LIGHT) return
+        if (event.values.isEmpty()) return
+        val lux = event.values[0]
+        if (!lux.isFinite()) return
+        // Skip duplicates so a stable scene doesn't recompose the UI at sensor rate.
+        // StateFlow dedupes equal values, but a fresh timestamp would defeat that.
+        if (_readings.value?.lux == lux) return
         _readings.value = LightReading(
-            lux = event.values[0],
-            timestampMillis = System.currentTimeMillis()
+            lux = lux,
+            // Monotonic clock: immune to NTP / timezone / user changes.
+            // Base is millis since boot (SystemClock.elapsedRealtime).
+            timestampMillis = SystemClock.elapsedRealtime()
         )
     }
 
