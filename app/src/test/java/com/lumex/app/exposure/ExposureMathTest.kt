@@ -138,4 +138,107 @@ class ExposureMathTest {
         assertEquals("f/1.4", Stops.formatAperture(1.4))
         assertEquals("f/5.6", Stops.formatAperture(5.6))
     }
+
+    // --- input validation --------------------------------------------------
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `infinite lux is rejected`() {
+        ExposureMath.ev100FromLux(Double.POSITIVE_INFINITY)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `NaN lux is rejected`() {
+        ExposureMath.ev100FromLux(Double.NaN)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `NaN calibration is rejected`() {
+        ExposureMath.ev100FromLux(100.0, calibrationEv = Double.NaN)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `NaN ev100 is rejected by luxFromEv100`() {
+        ExposureMath.luxFromEv100(Double.NaN)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `infinite ev100 is rejected by luxFromEv100`() {
+        ExposureMath.luxFromEv100(Double.POSITIVE_INFINITY)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `non-positive ISO is rejected`() {
+        ExposureMath.evAtIso(10.0, 0)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `NaN ev is rejected by evAtIso`() {
+        ExposureMath.evAtIso(Double.NaN, 100)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `non-positive aperture is rejected`() {
+        ExposureMath.exposureTimeSeconds(0.0, 10.0)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `non-positive shutter is rejected`() {
+        ExposureMath.apertureForShutter(-1.0, 10.0)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `nearest shutter rejects non-positive`() {
+        ExposureMath.nearestShutter(0.0)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `nearest aperture rejects NaN`() {
+        ExposureMath.nearestAperture(Double.NaN)
+    }
+
+    // --- label edge cases ----------------------------------------------------
+
+    @Test
+    fun `shutter fallback formats non-detent values`() {
+        // 1/100s is not a full-stop detent: falls back to nearest 1/N label.
+        assertEquals("1/100", Stops.formatShutter(1.0 / 100))
+        // Non-detent long exposure formats with one decimal, no float noise.
+        assertEquals("1.5s", Stops.formatShutter(1.5))
+        assertEquals("4s", Stops.formatShutter(4.0))
+    }
+
+    @Test
+    fun `shutter detent tolerates float noise`() {
+        // Computed 1/128 rarely bit-equals the literal; tolerance keeps the label.
+        assertEquals("1/125", Stops.formatShutter(1.0 / 128 * (1 + 1e-6)))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `shutter rejects non-positive`() {
+        Stops.formatShutter(0.0)
+    }
+
+    @Test
+    fun `aperture formats whole stops without decimal`() {
+        assertEquals("f/8", Stops.formatAperture(8.0))
+        assertEquals("f/2.8", Stops.formatAperture(2.8))
+    }
+
+    // --- solver semantics ----------------------------------------------------
+
+    @Test
+    fun `aperture residual is negative when snapped narrower`() {
+        // Exact is ~f/20.2, snapped f/22 lets in less light -> underexposure.
+        val solution = ExposureMath.solveAperture(shutterSeconds = 1.0 / 80, ev = 15.0)
+        assertEquals(22.0, solution.snappedFNumber, delta)
+        assertTrue(solution.residualEv < 0.0)
+    }
+
+    @Test
+    fun `scale bounds match table extremes`() {
+        assertEquals(Stops.SHUTTER_SPEEDS.min(), Stops.MIN_SHUTTER_SECONDS, delta)
+        assertEquals(Stops.SHUTTER_SPEEDS.max(), Stops.MAX_SHUTTER_SECONDS, delta)
+        assertEquals(Stops.APERTURES.min(), Stops.MIN_APERTURE, delta)
+        assertEquals(Stops.APERTURES.max(), Stops.MAX_APERTURE, delta)
+    }
 }

@@ -91,7 +91,7 @@ object ExposureMath {
             exactSeconds = exact,
             snappedSeconds = snapped,
             residualEv = log2(snapped / exact),
-            clipped = exact < Stops.SHUTTER_SPEEDS.min() || exact > Stops.SHUTTER_SPEEDS.max()
+            clipped = exact < Stops.MIN_SHUTTER_SECONDS || exact > Stops.MAX_SHUTTER_SECONDS
         )
     }
 
@@ -107,14 +107,15 @@ object ExposureMath {
             snappedFNumber = snapped,
             // Exposure scales with (exact/snapped)^2 for aperture changes.
             residualEv = 2.0 * log2(exact / snapped),
-            clipped = exact < Stops.APERTURES.min() || exact > Stops.APERTURES.max()
+            clipped = exact < Stops.MIN_APERTURE || exact > Stops.MAX_APERTURE
         )
     }
 
-    /** Nearest table entry by distance in stops (log domain). */
-    private fun nearest(table: DoubleArray, value: Double): Double {
+    /** Nearest table entry by distance in stops (log2 domain). */
+    private fun nearest(table: List<Double>, value: Double): Double {
+        require(table.isNotEmpty()) { "table must not be empty" }
         require(value > 0.0 && value.isFinite()) { "value must be positive" }
-        val logValue = kotlin.math.ln(value)
-        return table.minBy { kotlin.math.abs(kotlin.math.ln(it) - logValue) }
+        val logValue = log2(value)
+        return table.minBy { kotlin.math.abs(log2(it) - logValue) }
     }
 }

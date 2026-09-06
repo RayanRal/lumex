@@ -9,6 +9,10 @@ import kotlinx.coroutines.flow.StateFlow
  * camera-based meter) must convert via
  * `ExposureMath.luxFromEv100(...)` so all implementations stay
  * interchangeable.
+ *
+ * @param timestampMillis monotonic millis since boot
+ *   ([android.os.SystemClock.elapsedRealtime]), suitable for staleness checks.
+ *   Not wall-clock time — do not display it directly.
  */
 data class LightReading(
     val lux: Float,

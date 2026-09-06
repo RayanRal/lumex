@@ -7,9 +7,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lumex.app.ui.MeterScreen
 import com.lumex.app.ui.MeterViewModel
@@ -22,10 +23,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    val vm: MeterViewModel = viewModel(
-                        factory = MeterViewModelFactory(application)
-                    )
-                    val state by vm.uiState.collectAsState()
+                    val factory = remember { MeterViewModelFactory(application) }
+                    val vm: MeterViewModel = viewModel(factory = factory)
+                    val state by vm.uiState.collectAsStateWithLifecycle()
                     MeterScreen(
                         state = state,
                         onSelectIso = vm::selectIso,
