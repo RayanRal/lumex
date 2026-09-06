@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -176,14 +177,18 @@ fun MeterScreen(
             }
         }
 
-            // Film ISO lives at the bottom: set once, rarely changed.
-            Text(text = "Film ISO", style = MaterialTheme.typography.labelMedium)
-            DialStrip(
-                values = Stops.ISO_VALUES.toList(),
-                selected = state.iso,
-                onSelect = onSelectIso,
-                labelFor = { it.toString() }
-            )
+        // Breathing room: ISO is set once per roll, so it lives near the
+        // bottom, just above the debug toggle — not glued to the lock button.
+        Spacer(modifier = Modifier.height(56.dp))
+
+        // Film ISO lives at the bottom: set once, rarely changed.
+        Text(text = "Film ISO", style = MaterialTheme.typography.labelMedium)
+        DialStrip(
+            values = Stops.ISO_VALUES.toList(),
+            selected = state.iso,
+            onSelect = onSelectIso,
+            labelFor = { it.toString() }
+        )
         }
 
         IconButton(
