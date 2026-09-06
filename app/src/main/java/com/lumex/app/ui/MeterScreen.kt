@@ -17,25 +17,34 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -51,13 +60,15 @@ fun MeterScreen(
     onToggleHold: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    var showDebug by remember { mutableStateOf(false) }
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
         // Readout
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -75,12 +86,14 @@ fun MeterScreen(
                 text = state.headline,
                 style = MaterialTheme.typography.displayLarge
             )
-            Text(
-                text = state.detail,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
+            if (showDebug) {
+                Text(
+                    text = state.detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
 
         // Needle scale: residual over/under exposure in EV.
@@ -88,57 +101,39 @@ fun MeterScreen(
         EvScale(residualEv = state.residualEv?.toFloat(), clipped = state.clipped)
 
         // Mode
-        Text(text = "You set", style = MaterialTheme.typography.labelMedium)
+        Text(text = "Mode", style = MaterialTheme.typography.labelMedium)
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             SegmentedButton(
                 selected = state.mode == PriorityMode.APERTURE,
                 onClick = { onSelectMode(PriorityMode.APERTURE) },
                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                label = { Text("F → T") }
+                label = { Text("Av") }
             )
             SegmentedButton(
                 selected = state.mode == PriorityMode.SHUTTER,
                 onClick = { onSelectMode(PriorityMode.SHUTTER) },
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                label = { Text("T → F") }
+                label = { Text("Tv") }
             )
         }
 
-        // Fixed-parameter selector
+        // Fixed-parameter selector: continuous dial strip.
         if (state.mode == PriorityMode.APERTURE) {
             Text(text = "Aperture", style = MaterialTheme.typography.labelMedium)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(Stops.APERTURES.toList()) { f ->
-                    FilterChip(
-                        selected = f == state.aperture,
-                        onClick = { onSelectAperture(f) },
-                        label = { Text(Stops.formatAperture(f)) }
-                    )
-                }
-            }
+            DialStrip(
+                values = Stops.APERTURES.toList(),
+                selected = state.aperture,
+                onSelect = onSelectAperture,
+                labelFor = Stops::formatAperture
+            )
         } else {
             Text(text = "Shutter speed", style = MaterialTheme.typography.labelMedium)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(Stops.SHUTTER_SPEEDS.toList()) { t ->
-                    FilterChip(
-                        selected = t == state.shutterSeconds,
-                        onClick = { onSelectShutter(t) },
-                        label = { Text(Stops.formatShutter(t)) }
-                    )
-                }
-            }
-        }
-
-        // ISO
-        Text(text = "Film ISO", style = MaterialTheme.typography.labelMedium)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(Stops.ISO_VALUES.toList()) { iso ->
-                FilterChip(
-                    selected = iso == state.iso,
-                    onClick = { onSelectIso(iso) },
-                    label = { Text(iso.toString()) }
-                )
-            }
+            DialStrip(
+                values = Stops.SHUTTER_SPEEDS.toList(),
+                selected = state.shutterSeconds,
+                onSelect = onSelectShutter,
+                labelFor = Stops::formatShutter
+            )
         }
 
         // Shutter-style hold button: open lock = live, closed lock = held.
@@ -179,6 +174,30 @@ fun MeterScreen(
                     )
                 }
             }
+        }
+
+            // Film ISO lives at the bottom: set once, rarely changed.
+            Text(text = "Film ISO", style = MaterialTheme.typography.labelMedium)
+            DialStrip(
+                values = Stops.ISO_VALUES.toList(),
+                selected = state.iso,
+                onSelect = onSelectIso,
+                labelFor = { it.toString() }
+            )
+        }
+
+        IconButton(
+            onClick = { showDebug = !showDebug },
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.BugReport,
+                contentDescription = "Toggle debug info",
+                tint = if (showDebug) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -266,6 +285,67 @@ fun EvScale(
                     text = if (i > 0) "+$i" else "$i",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Continuous dial strip: uniform-width values on one bar with vertical
+ * separators. Selected value is emphasized; the strip starts scrolled
+ * to the current selection.
+ */
+@Composable
+private fun <T> DialStrip(
+    values: List<T>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    labelFor: (T) -> String,
+    modifier: Modifier = Modifier
+) {
+    val listState = rememberLazyListState()
+    LaunchedEffect(Unit) {
+        val index = values.indexOf(selected)
+        if (index > 0) listState.scrollToItem(index)
+    }
+    LazyRow(
+        state = listState,
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        items(
+            count = values.size,
+            key = { index -> values[index].toString() }
+        ) { index ->
+            val value = values[index]
+            val isSelected = value == selected
+            Box(
+                modifier = Modifier
+                    .width(64.dp)
+                    .clickable { onSelect(value) },
+                contentAlignment = Alignment.Center
+            ) {
+                if (index > 0) {
+                    VerticalDivider(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .height(24.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                }
+                Text(
+                    text = labelFor(value),
+                    modifier = Modifier.padding(vertical = 12.dp),
+                    style = if (isSelected) MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ) else MaterialTheme.typography.bodyMedium,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
                 )
             }
         }
