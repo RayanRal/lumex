@@ -1,6 +1,9 @@
 package com.lumex.app.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -10,14 +13,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -26,6 +34,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -71,24 +81,11 @@ fun MeterScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
-            if (state.clipped) {
-                Text(
-                    text = "Beyond scale — at limit",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-            if (state.holding) {
-                Text(
-                    text = "HELD",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
         }
 
         // Needle scale: residual over/under exposure in EV.
-        EvScale(residualEv = state.residualEv?.toFloat())
+        // When clipped, a red triangle at the scale end replaces the needle.
+        EvScale(residualEv = state.residualEv?.toFloat(), clipped = state.clipped)
 
         // Mode
         Text(text = "You set", style = MaterialTheme.typography.labelMedium)
@@ -144,11 +141,44 @@ fun MeterScreen(
             }
         }
 
-        Button(
-            onClick = onToggleHold,
-            modifier = Modifier.fillMaxWidth()
+        // Shutter-style hold button: open lock = live, closed lock = held.
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
         ) {
-            Text(if (state.holding) "Resume" else "Hold reading")
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(
+                        3.dp,
+                        if (state.holding) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.outline,
+                        CircleShape
+                    )
+                    .clickable(onClick = onToggleHold),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(68.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (state.holding) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.primaryContainer
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (state.holding) Icons.Filled.Lock else Icons.Filled.LockOpen,
+                        contentDescription = if (state.holding) "Release held reading" else "Hold reading",
+                        tint = if (state.holding) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -156,12 +186,17 @@ fun MeterScreen(
 /**
  * Horizontal needle strip showing [residualEv] (stops of over/under exposure)
  * on a fixed ±3 scale with headroom to ±3.5.
+ *
+ * When [clipped], the exact value is off-scale: instead of a pegged needle,
+ * a red triangle points outward at the corresponding end.
  */
 @Composable
 fun EvScale(
     residualEv: Float?,
+    clipped: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val errorColor = MaterialTheme.colorScheme.error
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
@@ -171,8 +206,31 @@ fun EvScale(
         val pxPerEv = half / 3.5f
         fun x(ev: Float): androidx.compose.ui.unit.Dp = half + pxPerEv * ev
 
-        // Needle behind ticks so they stay readable when pegged.
-        if (residualEv != null) {
+        if (clipped && residualEv != null) {
+            val atRight = residualEv > 0f
+            Canvas(
+                modifier = Modifier
+                    .size(22.dp)
+                    .align(if (atRight) Alignment.CenterEnd else Alignment.CenterStart)
+            ) {
+                val w = size.width
+                val h = size.height
+                val triangle = Path().apply {
+                    if (atRight) {
+                        moveTo(0f, 0f)
+                        lineTo(0f, h)
+                        lineTo(w, h / 2f)
+                    } else {
+                        moveTo(w, 0f)
+                        lineTo(w, h)
+                        lineTo(0f, h / 2f)
+                    }
+                    close()
+                }
+                drawPath(triangle, color = errorColor)
+            }
+        } else if (residualEv != null) {
+            // Needle behind ticks so they stay readable when pegged.
             val clamped = residualEv.coerceIn(-3.5f, 3.5f)
             Box(
                 modifier = Modifier

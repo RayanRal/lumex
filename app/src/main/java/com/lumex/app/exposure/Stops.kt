@@ -24,7 +24,7 @@ object Stops {
     )
 
     /** Standard full-stop ISO values. */
-    val ISO_VALUES = intArrayOf(12, 25, 50, 100, 200, 400, 800, 1600, 3200, 6400)
+    val ISO_VALUES = intArrayOf(50, 100, 200, 400, 800, 1600, 3200, 6400)
 
     private val SHUTTER_LABELS: Map<Double, String> = mapOf(
         4.0 to "4s",
@@ -52,6 +52,4 @@ object Stops {
         // Fallback for non-detent values (shouldn't normally happen).
         return if (seconds >= 1.0) "${seconds}s" else "1/${(1.0 / seconds).roundToInt()}"
     }
-
-    fun formatIso(iso: Int): String = "ISO $iso"
 }
